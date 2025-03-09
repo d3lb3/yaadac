@@ -1,0 +1,113 @@
+- name: Check connectivity with vagrant machines
+  tags: check
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Display debug messages
+      debug:
+        msg: "Successful interaction with {{ inventory_hostname }} - machine OS is {{ os }}"
+
+- name: Windows defaults
+  tags: windows
+  hosts: windows
+  gather_facts: false
+  tasks:
+    - name: Setup builtin Administrator account
+      tags: admin_account
+      ansible.windows.win_user:
+        name: Administrator
+        password: "{{ defaults.windows.password }}" # TODO
+    - name: Disable Windows Firewall
+      tags: disable_firewall
+      win_firewall:
+        state: disabled
+        profiles:
+        - Domain
+        - Private
+        - Public
+    - name: Disable Windows defender
+      tags: disable_defender
+      script: ../resources/disable_defender.bat
+
+- name: Fix NIC teaming issues
+  tags: nic_issues
+  hosts: windows
+  gather_facts: false
+  tasks:
+    - name: Disable the registration of NAT interface in DNS
+      tags: nic_dc_1
+      when: inventory_hostname in groups['domain_controller']
+      ansible.windows.win_powershell:
+        script: |
+          Get-NetAdapter Ethernet | Set-DNSClient -RegisterThisConnectionsAddress $False
+    - name: Enable only local interface for DNS client requests
+      tags: nic_dc_2
+      when: inventory_hostname in groups['domain_controller']
+      ansible.windows.win_powershell:
+        script: |
+          dnscmd inventory_hostname /resetlistenaddresses "{{ address }}"
+    - name: set a DNS forwarder to access the Internet
+      tags: nic_dc_3
+      when: inventory_hostname in groups['domain_controller']
+      ansible.windows.win_powershell:
+        script: |
+          Set-DnsServerForwarder -IPAddress "8.8.8.8"
+    - name: Prioritize local interface as the default for routing
+      tags: nic_servers
+      when: inventory_hostname in groups['servers']
+      ansible.windows.win_powershell:
+        script: |
+          Set-NetIPInterface -InterfaceAlias "Ethernet 2" -InterfaceMetric 10
+
+- name: Create ADDS
+  tags: adds
+  hosts: domain_controller
+  gather_facts: false
+  tasks:
+    - name: Create the domain
+      tags: create_domain
+      microsoft.ad.domain:
+        dns_domain_name: "{{ domain.fqdn }}"
+        safe_mode_password: "{{ domain.admin_password | default(defaults.windows.password) }}"
+        reboot: true
+    - name: Change domain admin password
+      tags: domain_admin_password
+      microsoft.ad.user:
+        password_never_expires: yes
+        name: Administrator
+        password: "{{ domain.admin_password | default(defaults.windows.password) }}"
+    - name: Create domain users
+      tags: create_users
+      microsoft.ad.user:
+        password_never_expires: yes
+        name: "{{ item.name }}"
+        firstname: "{{ item.firstname | default(None) }}"
+        lastname: "{{ item.lastname | default(None) }}"
+        description: "{{ item.description | default(None) }}"
+        password: "{{ item.password | default(defaults.windows.password) }}"
+        groups: 
+          add:
+            "{{ item.groups | default(omit) }}"
+      loop: "{{ domain.users }}"
+
+- name: Join machines to domain
+  tags: join_machines
+  hosts: servers, workstations
+  gather_facts: false
+  tasks:
+    - name: points DNS to the domain controller
+      tags: set_dns
+      win_dns_client:
+        adapter_names: "Ethernet 2"
+        dns_servers:
+        - "{{ domain.dc_ip }}"
+    - name: add entity to a domain
+      tags: add_to_domain
+      microsoft.ad.membership:
+        dns_domain_name: "{{ domain.fqdn }}"
+        domain_admin_user: "Administrator@{{ domain.fqdn }}"
+        domain_admin_password: "{{ domain.admin_password | default(defaults.windows.password) }}"
+        state: domain
+        reboot: true
+
+# export ANSIBLE_HOST_KEY_CHECKING=False

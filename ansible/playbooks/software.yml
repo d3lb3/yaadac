@@ -1,0 +1,37 @@
+- name: Chocolatey
+  tags: choco
+  hosts: windows
+  gather_facts: false
+  tasks:
+    - name: Install Chocolatey if it's not installed
+      win_chocolatey:
+        name: chocolatey
+        state: present
+    - name: Install each software via Chocolatey
+      win_chocolatey:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ software }}"
+      when: software is defined
+
+- name: KeePass
+  hosts: srv01
+  gather_facts: false
+  tasks:
+  - name: Install Chocolatey if it's not installed
+    win_chocolatey:
+      name: chocolatey
+      state: present
+  - name: Install KeePass
+    win_chocolatey:
+      name: keepass
+      state: present
+  - name: Run KeePass
+    ansible.windows.win_powershell:
+    script: |
+      "C:\Program Files\KeePass Password Safe 2\KeePass.exe" "C:\Shared\vagrant\Database.kdbx" -pw:P@$$w0rd!!
+  - name: Kill KeePass
+    ansible.windows.win_powershell:
+    script: |
+      Stop-Process -Name KeePass
+      

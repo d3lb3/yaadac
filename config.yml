@@ -1,0 +1,52 @@
+machines:
+
+  dc01:
+    address: 192.168.56.40 # static IP of the machine
+    os: windows-server-2019 # vagrant box template from https://portal.cloud.hashicorp.com/vagrant/discover/gusztavvargadr (you can also specify other vagrant box but there is no guarantee that it will work well)
+    admin_password: "P@$$w0rd!!" # windows local administrator password (optional)
+    software: ['keepass'] # list of softwre to install using chocolatey (optional)
+    shared_folders: ['~/Shared'] # host shared folder to mount (optional)
+  
+  srv01:
+    address: 192.168.56.41
+    os: windows-server-2019
+    shared_folders: ['~/Shared']
+    software: ['keepass']
+    virtualbox: # virtualbox specific varialbes, see "defaults" section to get the full list (optional)
+      memory: 3096
+  
+  srv02:
+    enabled: false # to make a box enabled/disabled boxes
+    address: 192.168.56.42
+    os: windows-server-2019
+
+
+domain: # active directory settings
+  domain_controller: dc01 # which machine to use as domain controller
+  fqdn: company.local # AD fqdn
+  admin_password: "P@$$w0rd!!" # builtin Administrator password
+  users: # list of users and attributes (any paramter will be dynamically populated to ansible vars in order to be used in playbooks)
+  -
+    name: jdoe
+    firstname: John
+    lastname: Doe
+    groups: ["Domain Users"]
+  -
+    name: jdoe.adm
+    firstname: John
+    lastname: Doe
+    groups: ["Domain Admins"]
+
+defaults:
+  
+  virtualbox:
+    group: "lab"
+    boot_timeout: 600
+    graceful_halt_timeout: 600
+    gui: false
+    memory: 2048
+    cpus: 1
+  
+  windows:
+    password: "P@$$w0rd!!"
+    shared_folders_root: C:\Shared
