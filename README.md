@@ -57,7 +57,7 @@ vagrant resume
 ```bash
 vagrant snapshot save <name> (--force)
 vagrant snapshot restore <name>
-vagrant delete restore <name>
+vagrant delete <name>
 ```
 
 **Connect to a created virtual machine**
