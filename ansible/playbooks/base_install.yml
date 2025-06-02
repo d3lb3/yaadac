@@ -92,7 +92,7 @@
 
 - name: Join machines to domain
   tags: join_machines
-  hosts: servers, workstations
+  hosts: servers:workstations:!domain_controller
   gather_facts: false
   tasks:
     - name: points DNS to the domain controller

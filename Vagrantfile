@@ -17,6 +17,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.graceful_halt_timeout = 600
     config.vm.provider "virtualbox" do |vbox|
         vbox.customize ["modifyvm", :id, "--groups", '/' + global_vars['defaults']['virtualbox']['group']]
+        vbox.customize ['modifyvm', :id, '--clipboard-mode', 'bidirectional']
+        vbox.customize ['modifyvm', :id, '--draganddrop', 'bidirectional']
+        vbox.linked_clone = true
         config.vbguest.auto_update = false
     end
 
@@ -61,7 +64,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                 else
                     vbox.cpus = global_vars['defaults']['virtualbox']['cpus']
                 end
-                vbox.linked_clone = true
             end
             
             # windows specific stuff
