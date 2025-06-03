@@ -59,6 +59,17 @@
         script: |
           Set-NetIPInterface -InterfaceAlias "Ethernet 2" -InterfaceMetric 10
 
+- name: Keyboard layout
+  hosts: windows
+  gather_facts: false
+  tasks:
+    - name: Add FR keyboard layout
+      ansible.windows.win_powershell:
+        script: |
+          $LanguageList = Get-WinUserLanguageList
+          $LanguageList.Add("fr-FR")
+          Set-WinUserLanguageList $LanguageList -Confirm:$false -Force 
+
 - name: Create ADDS
   tags: adds
   hosts: domain_controller
