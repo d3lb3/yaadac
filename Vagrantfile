@@ -88,10 +88,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     # clears existing ansible inventory
 
     def clear_directory(dir_path)
-        Dir.foreach(dir_path) do |file|
-            file_path = File.join(dir_path, file)  
-            next if file == '.' || file == '..'
-            File.delete(file_path) if File.file?(file_path)
+        if File.directory?(dir_path) then
+            Dir.foreach(dir_path) do |file|
+                file_path = File.join(dir_path, file)  
+                next if file == '.' || file == '..'
+                File.delete(file_path) if File.file?(file_path)
+            end
         end
     end
 
